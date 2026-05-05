@@ -4,7 +4,7 @@ import { ProductContext } from '../../contexts/ProductContext';
 import { Edit, Trash2 } from 'lucide-react';
 
 const Dashboard = () => {
-    const { products, deleteProduct } = useContext(ProductContext);
+    const { products, deleteProduct, loading } = useContext(ProductContext);
 
     const handleDelete = (id) => {
         if (window.confirm('Are you sure you want to delete this product?')) {
@@ -12,8 +12,13 @@ const Dashboard = () => {
         }
     };
 
+    if (loading) {
+        return <div style={{ textAlign: 'center', padding: '50px', color: 'var(--color-gray)' }}>Loading products...</div>;
+    }
+
     return (
         <div className="animate-fade-in">
+
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
                 <h1 style={{ fontFamily: 'var(--font-serif)' }}>Products Dashboard</h1>
                 <Link to="/admin/products/new" className="btn btn-primary">+ Add Product</Link>

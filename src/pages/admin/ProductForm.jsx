@@ -44,14 +44,24 @@ const ProductForm = () => {
         }
     };
 
-    const handleSubmit = (e) => {
+    const [saving, setSaving] = useState(false);
+
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        if (isEditing) {
-            updateProduct(id, formData);
-        } else {
-            addProduct(formData);
+        setSaving(true);
+        try {
+            if (isEditing) {
+                await updateProduct(id, formData);
+            } else {
+                await addProduct(formData);
+            }
+            navigate('/admin/dashboard');
+        } catch (error) {
+            console.error("Failed to save:", error);
+            alert("Error saving product. Please try again.");
+        } finally {
+            setSaving(false);
         }
-        navigate('/admin/dashboard');
     };
 
     return (
@@ -66,17 +76,17 @@ const ProductForm = () => {
                     <div>
                         <div className="form-group">
                             <label className="form-label">Product Name</label>
-                            <input type="text" className="form-control" name="name" value={formData.name} onChange={handleChange} required />
+                            <input type="text" className="form-control" name="name" value={formData.name} onChange={handleChange} required disabled={saving} />
                         </div>
 
                         <div className="form-group">
                             <label className="form-label">Price (₱)</label>
-                            <input type="number" className="form-control" name="price" value={formData.price} onChange={handleChange} required />
+                            <input type="number" className="form-control" name="price" value={formData.price} onChange={handleChange} required disabled={saving} />
                         </div>
 
                         <div className="form-group">
                             <label className="form-label">Category</label>
-                            <select className="form-control" name="category" value={formData.category} onChange={handleChange}>
+                            <select className="form-control" name="category" value={formData.category} onChange={handleChange} disabled={saving}>
                                 <option value="Eau de Parfum">Eau de Parfum</option>
                                 <option value="Eau de Toilette">Eau de Toilette</option>
                                 <option value="Extrait de Parfum">Extrait de Parfum</option>
@@ -86,14 +96,14 @@ const ProductForm = () => {
 
                         <div className="form-group">
                             <label className="form-label">Stock Quantity</label>
-                            <input type="number" className="form-control" name="stock" value={formData.stock} onChange={handleChange} required />
+                            <input type="number" className="form-control" name="stock" value={formData.stock} onChange={handleChange} required disabled={saving} />
                         </div>
                     </div>
 
                     <div>
                         <div className="form-group">
                             <label className="form-label">Description</label>
-                            <textarea className="form-control" name="description" rows="5" value={formData.description} onChange={handleChange} required></textarea>
+                            <textarea className="form-control" name="description" rows="5" value={formData.description} onChange={handleChange} required disabled={saving}></textarea>
                         </div>
 
                         <div className="form-group">
@@ -107,11 +117,11 @@ const ProductForm = () => {
                                     </div>
                                 )}
                                 <div style={{ flex: 1 }}>
-                                    <input type="text" className="form-control" name="image" value={formData.image} onChange={handleChange} placeholder="Image URL (or upload below)" style={{ marginBottom: '10px' }} />
-                                    <div className="file-upload-wrapper" style={{ display: 'block', textAlign: 'center', padding: '10px', backgroundColor: 'var(--color-cream)', borderRadius: 'var(--border-radius)', border: '1px dashed var(--color-gold)', color: 'var(--color-gold)' }}>
+                                    <input type="text" className="form-control" name="image" value={formData.image} onChange={handleChange} placeholder="Image URL (or upload below)" style={{ marginBottom: '10px' }} disabled={saving} />
+                                    <div className="file-upload-wrapper" style={{ display: 'block', textAlign: 'center', padding: '10px', backgroundColor: 'var(--color-cream)', borderRadius: 'var(--border-radius)', border: '1px dashed var(--color-gold)', color: 'var(--color-gold)', opacity: saving ? 0.5 : 1 }}>
                                         <Upload size={18} style={{ verticalAlign: 'middle', marginRight: '5px' }} />
-                                        <span>Upload Image</span>
-                                        <input type="file" accept="image/*" onChange={handleImageUpload} />
+                                        <span>{saving ? 'Uploading...' : 'Upload Image'}</span>
+                                        <input type="file" accept="image/*" onChange={handleImageUpload} disabled={saving} />
                                     </div>
                                 </div>
                             </div>
@@ -120,10 +130,11 @@ const ProductForm = () => {
                 </div>
 
                 <div style={{ marginTop: '40px', borderTop: '1px solid #eee', paddingTop: '20px', textAlign: 'right' }}>
-                    <button type="submit" className="btn btn-primary" style={{ padding: '12px 40px' }}>
-                        {isEditing ? 'Save Changes' : 'Create Product'}
+                    <button type="submit" className="btn btn-primary" style={{ padding: '12px 40px' }} disabled={saving}>
+                        {saving ? 'Saving...' : (isEditing ? 'Save Changes' : 'Create Product')}
                     </button>
                 </div>
+
             </form>
         </div>
     );

@@ -1,107 +1,120 @@
 import React, { createContext, useState, useEffect } from 'react';
+import { 
+    collection, 
+    addDoc, 
+    updateDoc, 
+    deleteDoc, 
+    doc, 
+    onSnapshot, 
+    query, 
+    orderBy 
+} from 'firebase/firestore';
+import { ref, uploadString, getDownloadURL } from 'firebase/storage';
+import { db, storage } from '../firebase';
 
 export const ProductContext = createContext();
-
-const initialProducts = [
-    {
-        id: "p1",
-        name: "Oud & Velvet",
-        price: 185,
-        category: "Eau de Parfum",
-        description: "A mysterious blend of agarwood, saffron, and dark rose. Perfect for evening wear.",
-        stockStatus: "Available",
-        stock: 5,
-        image: "https://images.unsplash.com/photo-1594035910387-fea47794261f?q=80&w=600&auto=format&fit=crop"
-    },
-    {
-        id: "p2",
-        name: "Citrus Riviera",
-        price: 120,
-        category: "Eau de Toilette",
-        description: "Bright lemon, bergamot, and a hint of sea salt. Like a breeze on the Mediterranean.",
-        stockStatus: "Available",
-        stock: 12,
-        image: "https://images.unsplash.com/photo-1592945403244-b3fbafd7f539?q=80&w=600&auto=format&fit=crop"
-    },
-    {
-        id: "p3",
-        name: "Midnight Ambre",
-        price: 210,
-        category: "Extrait de Parfum",
-        description: "Warm amber, vanilla, and patchouli. A long-lasting and intimate fragrance.",
-        stockStatus: "Sold Out",
-        stock: 0,
-        image: "https://images.unsplash.com/photo-1588405748880-12d1d2a59f75?q=80&w=600&auto=format&fit=crop"
-    },
-    {
-        id: "p4",
-        name: "Floral Blush",
-        price: 145,
-        category: "Eau de Parfum",
-        description: "Peony, jasmine, and white musk. Soft, delicate, and ultra-feminine.",
-        stockStatus: "Available",
-        stock: 8,
-        image: "https://images.unsplash.com/photo-1541643600914-78b084683601?q=80&w=600&auto=format&fit=crop"
-    }
-];
 
 export const ProductProvider = ({ children }) => {
     const [products, setProducts] = useState([]);
     const [orders, setOrders] = useState([]);
+    const [loading, setLoading] = useState(true);
 
+    // Sync Products from Firestore
     useEffect(() => {
-        const storedProducts = localStorage.getItem('ls_products');
-        if (storedProducts) {
-            setProducts(JSON.parse(storedProducts));
-        } else {
-            setProducts(initialProducts);
-            localStorage.setItem('ls_products', JSON.stringify(initialProducts));
-        }
+        const q = query(collection(db, "products"), orderBy("name"));
+        const unsubscribe = onSnapshot(q, (querySnapshot) => {
+            const prods = [];
+            querySnapshot.forEach((doc) => {
+                prods.push({ id: doc.id, ...doc.data() });
+            });
+            setProducts(prods);
+            setLoading(false);
+        });
 
-        const storedOrders = localStorage.getItem('ls_orders');
-        if (storedOrders) {
-            setOrders(JSON.parse(storedOrders));
-        }
+        return () => unsubscribe();
     }, []);
 
-    const addProduct = (product) => {
-        const newProduct = {
-            ...product,
-            id: Date.now().toString()
-        };
-        const updated = [...products, newProduct];
-        setProducts(updated);
-        localStorage.setItem('ls_products', JSON.stringify(updated));
+    // Sync Orders from Firestore
+    useEffect(() => {
+        const q = query(collection(db, "orders"), orderBy("date", "desc"));
+        const unsubscribe = onSnapshot(q, (querySnapshot) => {
+            const ords = [];
+            querySnapshot.forEach((doc) => {
+                ords.push({ id: doc.id, ...doc.data() });
+            });
+            setOrders(ords);
+        });
+
+        return () => unsubscribe();
+    }, []);
+
+    const uploadImage = async (base64Image, fileName) => {
+        if (!base64Image || !base64Image.startsWith('data:image')) return base64Image;
+        
+        const storageRef = ref(storage, `products/${Date.now()}_${fileName}`);
+        const snapshot = await uploadString(storageRef, base64Image, 'data_url');
+        return await getDownloadURL(snapshot.ref);
     };
 
-    const updateProduct = (id, updatedProduct) => {
-        const updated = products.map(p => p.id === id ? { ...p, ...updatedProduct } : p);
-        setProducts(updated);
-        localStorage.setItem('ls_products', JSON.stringify(updated));
+    const addProduct = async (product) => {
+        try {
+            // If image is a base64 string, upload it to storage first
+            const imageUrl = await uploadImage(product.image, product.name);
+            await addDoc(collection(db, "products"), {
+                ...product,
+                image: imageUrl,
+                createdAt: new Date().toISOString()
+            });
+        } catch (error) {
+            console.error("Error adding product: ", error);
+        }
     };
 
-    const deleteProduct = (id) => {
-        const updated = products.filter(p => p.id !== id);
-        setProducts(updated);
-        localStorage.setItem('ls_products', JSON.stringify(updated));
+    const updateProduct = async (id, updatedProduct) => {
+        try {
+            let imageUrl = updatedProduct.image;
+            // If image changed and is base64, upload new one
+            if (updatedProduct.image && updatedProduct.image.startsWith('data:image')) {
+                imageUrl = await uploadImage(updatedProduct.image, updatedProduct.name);
+            }
+
+            const productRef = doc(db, "products", id);
+            await updateDoc(productRef, {
+                ...updatedProduct,
+                image: imageUrl
+            });
+        } catch (error) {
+            console.error("Error updating product: ", error);
+        }
     };
 
-    const addOrder = (order) => {
-        const newOrder = {
-            ...order,
-            id: Date.now().toString(),
-            date: new Date().toISOString(),
-            status: 'Pending'
-        };
-        const updated = [newOrder, ...orders];
-        setOrders(updated);
-        localStorage.setItem('ls_orders', JSON.stringify(updated));
+    const deleteProduct = async (id) => {
+        try {
+            await deleteDoc(doc(db, "products", id));
+        } catch (error) {
+            console.error("Error deleting product: ", error);
+        }
     };
 
-    const updateOrderStatus = (orderId, newStatus) => {
-        const updated = orders.map(o => o.id === orderId ? { ...o, status: newStatus } : o);
-        setOrders(updated);
-        localStorage.setItem('ls_orders', JSON.stringify(updated));
+    const addOrder = async (order) => {
+        try {
+            await addDoc(collection(db, "orders"), {
+                ...order,
+                date: new Date().toISOString(),
+                status: 'Pending'
+            });
+        } catch (error) {
+            console.error("Error adding order: ", error);
+        }
+    };
+
+    const updateOrderStatus = async (orderId, newStatus) => {
+        try {
+            const orderRef = doc(db, "orders", orderId);
+            await updateDoc(orderRef, { status: newStatus });
+        } catch (error) {
+            console.error("Error updating order status: ", error);
+        }
     };
 
     const getProduct = (id) => {
@@ -109,8 +122,19 @@ export const ProductProvider = ({ children }) => {
     };
 
     return (
-        <ProductContext.Provider value={{ products, orders, addProduct, updateProduct, deleteProduct, getProduct, addOrder, updateOrderStatus }}>
+        <ProductContext.Provider value={{ 
+            products, 
+            orders, 
+            loading,
+            addProduct, 
+            updateProduct, 
+            deleteProduct, 
+            getProduct, 
+            addOrder, 
+            updateOrderStatus 
+        }}>
             {children}
         </ProductContext.Provider>
     );
 };
+

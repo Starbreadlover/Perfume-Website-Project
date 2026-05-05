@@ -4,8 +4,18 @@ import { ProductContext } from '../contexts/ProductContext';
 import ProductCard from '../components/ProductCard';
 
 const Home = () => {
-    const { products } = useContext(ProductContext);
+    const { products, loading } = useContext(ProductContext);
+    
+    if (loading) {
+        return (
+            <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <p style={{ color: 'var(--color-gray)' }}>L & S PARFUMS...</p>
+            </div>
+        );
+    }
+
     const featured = products.slice(0, 4);
+
 
     return (
         <div className="animate-fade-in">

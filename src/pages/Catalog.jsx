@@ -3,7 +3,16 @@ import { ProductContext } from '../contexts/ProductContext';
 import ProductCard from '../components/ProductCard';
 
 const Catalog = () => {
-    const { products } = useContext(ProductContext);
+    const { products, loading } = useContext(ProductContext);
+
+    if (loading) {
+        return (
+            <div className="container section text-center" style={{ padding: '100px 0' }}>
+                <p style={{ color: 'var(--color-gray)' }}>Discovering scents...</p>
+            </div>
+        );
+    }
+
 
     return (
         <div className="container section animate-fade-in">
