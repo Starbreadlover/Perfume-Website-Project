@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect } from 'react';
+import React, { createContext, useState, useEffect, useCallback } from 'react';
 import { 
     collection, 
     addDoc, 
@@ -7,9 +7,13 @@ import {
     doc, 
     onSnapshot, 
     query, 
-    orderBy 
+    orderBy,
+    limit,
+    startAfter,
+    getDocs
 } from 'firebase/firestore';
-import { ref, uploadString, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import imageCompression from 'browser-image-compression';
 import { db, storage } from '../firebase';
 
 export const ProductContext = createContext();
@@ -18,16 +22,21 @@ export const ProductProvider = ({ children }) => {
     const [products, setProducts] = useState([]);
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
 
-    // Sync Products from Firestore
+    // Sync Products from Firestore (Real-time for public site)
     useEffect(() => {
-        const q = query(collection(db, "products"), orderBy("name"));
+        const q = query(collection(db, "products"), orderBy("createdAt", "desc"));
         const unsubscribe = onSnapshot(q, (querySnapshot) => {
             const prods = [];
             querySnapshot.forEach((doc) => {
                 prods.push({ id: doc.id, ...doc.data() });
             });
             setProducts(prods);
+            setLoading(false);
+        }, (err) => {
+            console.error("Firestore error:", err);
+            setError("Failed to fetch products.");
             setLoading(false);
         });
 
@@ -43,56 +52,73 @@ export const ProductProvider = ({ children }) => {
                 ords.push({ id: doc.id, ...doc.data() });
             });
             setOrders(ords);
+        }, (err) => {
+            console.error("Orders sync error:", err);
         });
 
         return () => unsubscribe();
     }, []);
 
-    const uploadImage = async (base64Image, fileName) => {
-        if (!base64Image || !base64Image.startsWith('data:image')) return base64Image;
-        
-        const storageRef = ref(storage, `products/${Date.now()}_${fileName}`);
-        const snapshot = await uploadString(storageRef, base64Image, 'data_url');
-        return await getDownloadURL(snapshot.ref);
+    const compressAndUploadImage = async (imageFile, fileName) => {
+        try {
+            const options = {
+                maxSizeMB: 0.8,
+                maxWidthOrHeight: 1200,
+                useWebWorker: true
+            };
+            const compressedFile = await imageCompression(imageFile, options);
+            const storageRef = ref(storage, `products/${Date.now()}_${fileName}`);
+            const snapshot = await uploadBytes(storageRef, compressedFile);
+            return await getDownloadURL(snapshot.ref);
+        } catch (error) {
+            console.error("Image optimization failed:", error);
+            throw new Error("Failed to optimize and upload image.");
+        }
     };
 
-    const addProduct = async (product) => {
+    const addProduct = async (product, imageFile) => {
         try {
-            // If image is a base64 string, upload it to storage first
-            const imageUrl = await uploadImage(product.image, product.name);
+            let imageUrl = product.image;
+            if (imageFile) {
+                imageUrl = await compressAndUploadImage(imageFile, product.name);
+            }
+            
             await addDoc(collection(db, "products"), {
                 ...product,
                 image: imageUrl,
                 createdAt: new Date().toISOString()
             });
-        } catch (error) {
-            console.error("Error adding product: ", error);
+        } catch (err) {
+            console.error("Error adding product: ", err);
+            throw err;
         }
     };
 
-    const updateProduct = async (id, updatedProduct) => {
+    const updateProduct = async (id, updatedProduct, imageFile) => {
         try {
             let imageUrl = updatedProduct.image;
-            // If image changed and is base64, upload new one
-            if (updatedProduct.image && updatedProduct.image.startsWith('data:image')) {
-                imageUrl = await uploadImage(updatedProduct.image, updatedProduct.name);
+            if (imageFile) {
+                imageUrl = await compressAndUploadImage(imageFile, updatedProduct.name);
             }
 
             const productRef = doc(db, "products", id);
             await updateDoc(productRef, {
                 ...updatedProduct,
-                image: imageUrl
+                image: imageUrl,
+                updatedAt: new Date().toISOString()
             });
-        } catch (error) {
-            console.error("Error updating product: ", error);
+        } catch (err) {
+            console.error("Error updating product: ", err);
+            throw err;
         }
     };
 
     const deleteProduct = async (id) => {
         try {
             await deleteDoc(doc(db, "products", id));
-        } catch (error) {
-            console.error("Error deleting product: ", error);
+        } catch (err) {
+            console.error("Error deleting product: ", err);
+            throw err;
         }
     };
 
@@ -103,8 +129,9 @@ export const ProductProvider = ({ children }) => {
                 date: new Date().toISOString(),
                 status: 'Pending'
             });
-        } catch (error) {
-            console.error("Error adding order: ", error);
+        } catch (err) {
+            console.error("Error adding order: ", err);
+            throw err;
         }
     };
 
@@ -112,20 +139,22 @@ export const ProductProvider = ({ children }) => {
         try {
             const orderRef = doc(db, "orders", orderId);
             await updateDoc(orderRef, { status: newStatus });
-        } catch (error) {
-            console.error("Error updating order status: ", error);
+        } catch (err) {
+            console.error("Error updating order status: ", err);
+            throw err;
         }
     };
 
-    const getProduct = (id) => {
+    const getProduct = useCallback((id) => {
         return products.find(p => p.id === id);
-    };
+    }, [products]);
 
     return (
         <ProductContext.Provider value={{ 
             products, 
             orders, 
             loading,
+            error,
             addProduct, 
             updateProduct, 
             deleteProduct, 
@@ -137,4 +166,5 @@ export const ProductProvider = ({ children }) => {
         </ProductContext.Provider>
     );
 };
+
 

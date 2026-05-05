@@ -6,7 +6,8 @@ const ProductCard = ({ product }) => {
             <div className="card-img-container">
                 {product.stockStatus === 'Sold Out' && <span className="badge badge-sold-out">Sold Out</span>}
                 {product.stockStatus === 'Sold' && <span className="badge badge-sold">Sold</span>}
-                <img src={product.image} alt={product.name} className="card-img" />
+                <img src={product.image} alt={product.name} className="card-img" loading="lazy" />
+
             </div>
             <div className="card-content">
                 <div>
