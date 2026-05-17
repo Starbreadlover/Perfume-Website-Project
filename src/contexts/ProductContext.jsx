@@ -1,19 +1,6 @@
 import React, { createContext, useState, useEffect, useCallback } from 'react';
-import { 
-    collection, 
-    addDoc, 
-    updateDoc, 
-    deleteDoc, 
-    doc, 
-    onSnapshot, 
-    query, 
-    orderBy,
-    limit,
-    startAfter,
-    getDocs
-} from 'firebase/firestore';
 import imageCompression from 'browser-image-compression';
-import { db } from '../firebase';
+import supabase from '../supabase';
 
 export const ProductContext = createContext();
 
@@ -23,40 +10,37 @@ export const ProductProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    // Sync Products from Firestore (Real-time for public site)
-    useEffect(() => {
-        const q = query(collection(db, "products"), orderBy("createdAt", "desc"));
-        const unsubscribe = onSnapshot(q, (querySnapshot) => {
-            const prods = [];
-            querySnapshot.forEach((doc) => {
-                prods.push({ id: doc.id, ...doc.data() });
-            });
-            setProducts(prods);
-            setLoading(false);
-        }, (err) => {
-            console.error("Firestore error:", err);
+    const fetchProducts = useCallback(async () => {
+        const { data, error: err } = await supabase
+            .from('products')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (err) {
+            console.error("Supabase error:", err);
             setError("Failed to fetch products.");
-            setLoading(false);
-        });
-
-        return () => unsubscribe();
+        } else {
+            setProducts((data || []).map(row => ({ ...row, image: row.image_url })));
+        }
     }, []);
 
-    // Sync Orders from Firestore
+    const fetchOrders = useCallback(async () => {
+        const { data, error: err } = await supabase
+            .from('orders')
+            .select('*')
+            .order('date', { ascending: false });
+
+        if (err) {
+            console.error("Orders fetch error:", err);
+        } else {
+            setOrders(data || []);
+        }
+    }, []);
+
     useEffect(() => {
-        const q = query(collection(db, "orders"), orderBy("date", "desc"));
-        const unsubscribe = onSnapshot(q, (querySnapshot) => {
-            const ords = [];
-            querySnapshot.forEach((doc) => {
-                ords.push({ id: doc.id, ...doc.data() });
-            });
-            setOrders(ords);
-        }, (err) => {
-            console.error("Orders sync error:", err);
-        });
-
-        return () => unsubscribe();
-    }, []);
+        fetchProducts().then(() => setLoading(false));
+        fetchOrders();
+    }, [fetchProducts, fetchOrders]);
 
     const compressAndUploadImage = async (imageFile) => {
         const options = {
@@ -87,70 +71,58 @@ export const ProductProvider = ({ children }) => {
         if (imageFile) {
             imageUrl = await compressAndUploadImage(imageFile);
         }
-        try {
-            await addDoc(collection(db, "products"), {
-                ...product,
-                image: imageUrl,
-                createdAt: new Date().toISOString()
-            });
-        } catch (err) {
-            if (err.code === 'permission-denied') {
-                throw new Error("Firestore permission denied — open Firebase Console → Firestore → Rules and allow writes.");
-            }
-            throw new Error(err.message || "Failed to save to database.");
-        }
+        const { error: err } = await supabase.from('products').insert({
+            name: product.name,
+            description: product.description,
+            price: Number(product.price),
+            category: product.category,
+            stock: Number(product.stock),
+            image_url: imageUrl,
+        });
+        if (err) throw new Error(err.message || "Failed to save to database.");
+        await fetchProducts();
     };
 
-
     const updateProduct = async (id, updatedProduct, imageFile) => {
-        try {
-            let imageUrl = updatedProduct.image;
-            if (imageFile) {
-                imageUrl = await compressAndUploadImage(imageFile);
-            }
-
-            const productRef = doc(db, "products", id);
-            await updateDoc(productRef, {
-                ...updatedProduct,
-                image: imageUrl,
-                updatedAt: new Date().toISOString()
-            });
-        } catch (err) {
-            console.error("Error updating product: ", err);
-            throw err;
+        let imageUrl = updatedProduct.image;
+        if (imageFile) {
+            imageUrl = await compressAndUploadImage(imageFile);
         }
+        const { error: err } = await supabase.from('products').update({
+            name: updatedProduct.name,
+            description: updatedProduct.description,
+            price: Number(updatedProduct.price),
+            category: updatedProduct.category,
+            stock: Number(updatedProduct.stock),
+            image_url: imageUrl,
+        }).eq('id', id);
+        if (err) throw new Error(err.message || "Failed to update product.");
+        await fetchProducts();
     };
 
     const deleteProduct = async (id) => {
-        try {
-            await deleteDoc(doc(db, "products", id));
-        } catch (err) {
-            console.error("Error deleting product: ", err);
-            throw err;
-        }
+        const { error: err } = await supabase.from('products').delete().eq('id', id);
+        if (err) throw new Error(err.message || "Failed to delete product.");
+        await fetchProducts();
     };
 
     const addOrder = async (order) => {
-        try {
-            await addDoc(collection(db, "orders"), {
-                ...order,
-                date: new Date().toISOString(),
-                status: 'Pending'
-            });
-        } catch (err) {
-            console.error("Error adding order: ", err);
-            throw err;
-        }
+        const { error: err } = await supabase.from('orders').insert({
+            ...order,
+            date: new Date().toISOString(),
+            status: 'Pending',
+        });
+        if (err) throw new Error(err.message || "Failed to place order.");
+        await fetchOrders();
     };
 
     const updateOrderStatus = async (orderId, newStatus) => {
-        try {
-            const orderRef = doc(db, "orders", orderId);
-            await updateDoc(orderRef, { status: newStatus });
-        } catch (err) {
-            console.error("Error updating order status: ", err);
-            throw err;
-        }
+        const { error: err } = await supabase
+            .from('orders')
+            .update({ status: newStatus })
+            .eq('id', orderId);
+        if (err) throw new Error(err.message || "Failed to update order status.");
+        await fetchOrders();
     };
 
     const getProduct = useCallback((id) => {
@@ -158,21 +130,19 @@ export const ProductProvider = ({ children }) => {
     }, [products]);
 
     return (
-        <ProductContext.Provider value={{ 
-            products, 
-            orders, 
+        <ProductContext.Provider value={{
+            products,
+            orders,
             loading,
             error,
-            addProduct, 
-            updateProduct, 
-            deleteProduct, 
-            getProduct, 
-            addOrder, 
-            updateOrderStatus 
+            addProduct,
+            updateProduct,
+            deleteProduct,
+            getProduct,
+            addOrder,
+            updateOrderStatus,
         }}>
             {children}
         </ProductContext.Provider>
     );
 };
-
-
