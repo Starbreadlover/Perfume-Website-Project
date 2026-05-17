@@ -61,18 +61,26 @@ export const ProductProvider = ({ children }) => {
 
     const compressAndUploadImage = async (imageFile, fileName) => {
         try {
+            console.log("Starting image compression...");
             const options = {
                 maxSizeMB: 0.8,
                 maxWidthOrHeight: 1200,
                 useWebWorker: true
             };
             const compressedFile = await imageCompression(imageFile, options);
+            console.log("Compression complete. Uploading to Storage...");
+            
             const storageRef = ref(storage, `products/${Date.now()}_${fileName}`);
             const snapshot = await uploadBytes(storageRef, compressedFile);
+            
+            console.log("Upload complete. Getting download URL...");
             return await getDownloadURL(snapshot.ref);
         } catch (error) {
-            console.error("Image optimization failed:", error);
-            throw new Error("Failed to optimize and upload image.");
+            console.error("Image optimization/upload failed:", error);
+            if (error.code === 'storage/unauthorized') {
+                throw new Error("Firebase Storage permission denied. Please check your Storage Rules.");
+            }
+            throw new Error("Failed to upload image. Make sure Firebase Storage is enabled in your console.");
         }
     };
 
@@ -83,16 +91,22 @@ export const ProductProvider = ({ children }) => {
                 imageUrl = await compressAndUploadImage(imageFile, product.name);
             }
             
+            console.log("Adding document to Firestore...");
             await addDoc(collection(db, "products"), {
                 ...product,
                 image: imageUrl,
                 createdAt: new Date().toISOString()
             });
+            console.log("Product added successfully!");
         } catch (err) {
             console.error("Error adding product: ", err);
-            throw err;
+            if (err.code === 'permission-denied') {
+                throw new Error("Firestore permission denied. Please check your Database Rules.");
+            }
+            throw new Error(err.message || "Failed to save to database. Check your Firebase config.");
         }
     };
+
 
     const updateProduct = async (id, updatedProduct, imageFile) => {
         try {
