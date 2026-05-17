@@ -13,8 +13,7 @@ export const ProductProvider = ({ children }) => {
     const fetchProducts = useCallback(async () => {
         const { data, error: err } = await supabase
             .from('products')
-            .select('*')
-            .order('created_at', { ascending: false });
+            .select('*');
 
         if (err) {
             console.error("Supabase error:", err);
