@@ -12,9 +12,8 @@ import {
     startAfter,
     getDocs
 } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import imageCompression from 'browser-image-compression';
-import { db, storage } from '../firebase';
+import { db } from '../firebase';
 
 export const ProductContext = createContext();
 
@@ -59,45 +58,40 @@ export const ProductProvider = ({ children }) => {
         return () => unsubscribe();
     }, []);
 
-    const compressAndUploadImage = async (imageFile, fileName) => {
-        try {
-            console.log("Starting image compression...");
-            const options = {
-                maxSizeMB: 0.8,
-                maxWidthOrHeight: 1200,
-                useWebWorker: true
-            };
-            const compressedFile = await imageCompression(imageFile, options);
-            console.log("Compression complete. Uploading to Storage...");
-            
-            const storageRef = ref(storage, `products/${Date.now()}_${fileName}`);
-            const snapshot = await uploadBytes(storageRef, compressedFile);
-            
-            console.log("Upload complete. Getting download URL...");
-            return await getDownloadURL(snapshot.ref);
-        } catch (error) {
-            console.error("Image optimization/upload failed:", error);
-            if (error.code === 'storage/unauthorized') {
-                throw new Error("Firebase Storage permission denied. Please check your Storage Rules.");
-            }
-            throw new Error("Failed to upload image. Make sure Firebase Storage is enabled in your console.");
-        }
+    const compressAndUploadImage = async (imageFile) => {
+        const options = {
+            maxSizeMB: 0.8,
+            maxWidthOrHeight: 1200,
+            useWebWorker: true
+        };
+        const compressedFile = await imageCompression(imageFile, options);
+
+        const formData = new FormData();
+        formData.append('file', compressedFile);
+        formData.append('upload_preset', 'perfume_images');
+
+        const res = await fetch('https://api.cloudinary.com/v1_1/dybaq1zkl/image/upload', {
+            method: 'POST',
+            body: formData
+        });
+
+        if (!res.ok) throw new Error('Failed to upload image to Cloudinary.');
+
+        const data = await res.json();
+        return data.secure_url;
     };
 
     const addProduct = async (product, imageFile) => {
         try {
             let imageUrl = product.image;
             if (imageFile) {
-                imageUrl = await compressAndUploadImage(imageFile, product.name);
+                imageUrl = await compressAndUploadImage(imageFile);
             }
-            
-            console.log("Adding document to Firestore...");
             await addDoc(collection(db, "products"), {
                 ...product,
                 image: imageUrl,
                 createdAt: new Date().toISOString()
             });
-            console.log("Product added successfully!");
         } catch (err) {
             console.error("Error adding product: ", err);
             if (err.code === 'permission-denied') {
@@ -112,7 +106,7 @@ export const ProductProvider = ({ children }) => {
         try {
             let imageUrl = updatedProduct.image;
             if (imageFile) {
-                imageUrl = await compressAndUploadImage(imageFile, updatedProduct.name);
+                imageUrl = await compressAndUploadImage(imageFile);
             }
 
             const productRef = doc(db, "products", id);
