@@ -18,7 +18,7 @@ export const ProductProvider = ({ children }) => {
 
         if (err) {
             console.error("Supabase error:", err);
-            setError("Failed to fetch products.");
+            setError(`Failed to fetch products: ${err.message}`);
         } else {
             setProducts((data || []).map(row => ({ ...row, image: row.image_url })));
         }
