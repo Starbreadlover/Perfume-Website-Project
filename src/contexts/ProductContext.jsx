@@ -62,7 +62,7 @@ export const ProductProvider = ({ children }) => {
         const options = {
             maxSizeMB: 0.8,
             maxWidthOrHeight: 1200,
-            useWebWorker: true
+            useWebWorker: false
         };
         const compressedFile = await imageCompression(imageFile, options);
 
@@ -75,29 +75,29 @@ export const ProductProvider = ({ children }) => {
             body: formData
         });
 
-        if (!res.ok) throw new Error('Failed to upload image to Cloudinary.');
-
         const data = await res.json();
+        if (!res.ok) {
+            throw new Error(`Cloudinary error: ${data?.error?.message || res.statusText}`);
+        }
         return data.secure_url;
     };
 
     const addProduct = async (product, imageFile) => {
+        let imageUrl = product.image;
+        if (imageFile) {
+            imageUrl = await compressAndUploadImage(imageFile);
+        }
         try {
-            let imageUrl = product.image;
-            if (imageFile) {
-                imageUrl = await compressAndUploadImage(imageFile);
-            }
             await addDoc(collection(db, "products"), {
                 ...product,
                 image: imageUrl,
                 createdAt: new Date().toISOString()
             });
         } catch (err) {
-            console.error("Error adding product: ", err);
             if (err.code === 'permission-denied') {
-                throw new Error("Firestore permission denied. Please check your Database Rules.");
+                throw new Error("Firestore permission denied — open Firebase Console → Firestore → Rules and allow writes.");
             }
-            throw new Error(err.message || "Failed to save to database. Check your Firebase config.");
+            throw new Error(err.message || "Failed to save to database.");
         }
     };
 
