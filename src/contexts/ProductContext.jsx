@@ -9,6 +9,7 @@ export const ProductProvider = ({ children }) => {
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [ordersError, setOrdersError] = useState(null);
 
     const fetchProducts = useCallback(async () => {
         const { data, error: err } = await supabase
@@ -26,12 +27,13 @@ export const ProductProvider = ({ children }) => {
     const fetchOrders = useCallback(async () => {
         const { data, error: err } = await supabase
             .from('orders')
-            .select('*')
-            .order('date', { ascending: false });
+            .select('*');
 
         if (err) {
             console.error("Orders fetch error:", err);
+            setOrdersError(err.message);
         } else {
+            setOrdersError(null);
             setOrders(data || []);
         }
     }, []);
@@ -132,6 +134,7 @@ export const ProductProvider = ({ children }) => {
         <ProductContext.Provider value={{
             products,
             orders,
+            ordersError,
             loading,
             error,
             addProduct,

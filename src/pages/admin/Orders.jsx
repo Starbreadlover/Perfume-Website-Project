@@ -2,11 +2,16 @@ import { useContext } from 'react';
 import { ProductContext } from '../../contexts/ProductContext';
 
 const Orders = () => {
-    const { orders, updateOrderStatus } = useContext(ProductContext);
+    const { orders, ordersError, updateOrderStatus } = useContext(ProductContext);
 
     return (
         <div className="animate-fade-in">
             <h1 style={{ marginBottom: '30px' }}>Customer Orders</h1>
+            {ordersError && (
+                <div style={{ backgroundColor: '#fff1f0', border: '1px solid #f5222d', color: '#f5222d', padding: '12px 20px', borderRadius: '6px', marginBottom: '20px' }}>
+                    <strong>Database error:</strong> {ordersError}
+                </div>
+            )}
 
             <div style={{ backgroundColor: 'var(--color-white)', borderRadius: 'var(--border-radius)', overflow: 'hidden', boxShadow: '0 4px 15px rgba(0,0,0,0.03)' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
