@@ -1,8 +1,21 @@
-import { useContext } from 'react';
+import { useContext, useState } from 'react';
 import { ProductContext } from '../../contexts/ProductContext';
 
 const Orders = () => {
-    const { orders, ordersError, updateOrderStatus } = useContext(ProductContext);
+    const { orders, ordersError, updateOrderStatus, deleteOrder } = useContext(ProductContext);
+    const [deletingId, setDeletingId] = useState(null);
+
+    const handleDelete = async (id) => {
+        if (!window.confirm('Delete this order? This cannot be undone.')) return;
+        setDeletingId(id);
+        try {
+            await deleteOrder(id);
+        } catch (e) {
+            alert('Failed to delete order: ' + e.message);
+        } finally {
+            setDeletingId(null);
+        }
+    };
 
     return (
         <div className="animate-fade-in">
@@ -22,6 +35,7 @@ const Orders = () => {
                             <th style={{ padding: '20px' }}>Product</th>
                             <th style={{ padding: '20px' }}>Proof of Payment</th>
                             <th style={{ padding: '20px' }}>Status</th>
+                            <th style={{ padding: '20px' }}></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -75,6 +89,24 @@ const Orders = () => {
                                         <option value="Shipped">Shipped</option>
                                         <option value="Cancelled">Cancelled</option>
                                     </select>
+                                </td>
+                                <td style={{ padding: '15px 20px' }}>
+                                    <button
+                                        onClick={() => handleDelete(order.id)}
+                                        disabled={deletingId === order.id}
+                                        style={{
+                                            padding: '6px 12px',
+                                            backgroundColor: deletingId === order.id ? '#ccc' : '#fff1f0',
+                                            color: '#f5222d',
+                                            border: '1px solid #f5222d',
+                                            borderRadius: '4px',
+                                            cursor: deletingId === order.id ? 'not-allowed' : 'pointer',
+                                            fontSize: '0.8rem',
+                                            fontWeight: 600,
+                                        }}
+                                    >
+                                        {deletingId === order.id ? 'Deleting…' : 'Delete'}
+                                    </button>
                                 </td>
                             </tr>
                         ))}

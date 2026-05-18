@@ -126,6 +126,12 @@ export const ProductProvider = ({ children }) => {
         await fetchOrders();
     };
 
+    const deleteOrder = async (orderId) => {
+        const { error: err } = await supabase.from('orders').delete().eq('id', orderId);
+        if (err) throw new Error(err.message || "Failed to delete order.");
+        await fetchOrders();
+    };
+
     const getProduct = useCallback((id) => {
         return products.find(p => p.id === id);
     }, [products]);
@@ -143,6 +149,7 @@ export const ProductProvider = ({ children }) => {
             getProduct,
             addOrder,
             updateOrderStatus,
+            deleteOrder,
         }}>
             {children}
         </ProductContext.Provider>
