@@ -9,73 +9,113 @@ const ProductDetails = () => {
 
     if (!product) {
         return (
-            <div className="container section text-center animate-fade-in">
-                <h2>Product Not Found</h2>
-                <p style={{ margin: '20px 0', color: 'var(--color-gray)' }}>The fragrance you are looking for does not exist.</p>
+            <div className="container section text-center animate-fade-in" style={{ padding: '120px 5%' }}>
+                <h2 style={{ letterSpacing: '6px', marginBottom: '20px' }}>Not Found</h2>
+                <p style={{ margin: '20px 0 40px', color: 'var(--color-gray)', letterSpacing: '1px' }}>The fragrance you're looking for does not exist.</p>
                 <Link to="/catalog" className="btn btn-primary">Return to Catalog</Link>
             </div>
         );
     }
 
+    const inStock = product.stock > 0;
+
     return (
         <div className="container section animate-fade-in">
-            <Link to="/catalog" style={{ display: 'inline-block', marginBottom: '30px', color: 'var(--color-gray)' }}>
+            <Link to="/catalog" style={{
+                display: 'inline-block',
+                marginBottom: '40px',
+                color: 'var(--color-gray)',
+                fontSize: '0.68rem',
+                letterSpacing: '2.5px',
+                textTransform: 'uppercase',
+            }}>
                 &larr; Back to Catalog
             </Link>
 
-            <div style={{ display: 'flex', gap: '60px', flexWrap: 'wrap' }}>
-                {/* Product Image */}
-                <div style={{ flex: '1 1 400px', backgroundColor: 'var(--color-light-gray)', borderRadius: 'var(--border-radius)', overflow: 'hidden' }}>
-                    <div style={{ position: 'relative', height: '100%' }}>
-                        {product.stockStatus === 'Sold Out' && <span className="badge badge-sold-out">Sold Out</span>}
-                        {product.stockStatus === 'Sold' && <span className="badge badge-sold">Sold</span>}
-                        <img src={product.image} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    </div>
+            <div style={{ display: 'flex', gap: '70px', flexWrap: 'wrap' }}>
+                {/* Image */}
+                <div style={{
+                    flex: '1 1 400px',
+                    background: '#0d0c0a',
+                    border: '1px solid rgba(201, 169, 110, 0.1)',
+                    overflow: 'hidden',
+                    position: 'relative',
+                    minHeight: '500px',
+                }}>
+                    {product.stockStatus === 'Sold Out' && <span className="badge badge-sold-out">Sold Out</span>}
+                    {product.stockStatus === 'Sold' && <span className="badge badge-sold">Sold</span>}
+                    <img
+                        src={product.image}
+                        alt={product.name}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover', minHeight: '500px', filter: 'brightness(0.92)' }}
+                    />
                 </div>
 
-                {/* Product Info */}
-                <div style={{ flex: '1 1 400px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                    <p style={{ textTransform: 'uppercase', letterSpacing: '2px', color: 'var(--color-gold)', fontSize: '0.9rem', marginBottom: '10px' }}>
-                        {product.category}
+                {/* Info */}
+                <div style={{ flex: '1 1 360px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                    {product.category && (
+                        <p style={{
+                            textTransform: 'uppercase',
+                            letterSpacing: '3px',
+                            color: 'var(--color-gold)',
+                            fontSize: '0.68rem',
+                            marginBottom: '16px',
+                            fontWeight: 500,
+                        }}>
+                            {product.category}
+                        </p>
+                    )}
+                    <h1 style={{ fontSize: 'clamp(2rem, 4vw, 3rem)', letterSpacing: '5px', marginBottom: '24px' }}>
+                        {product.name}
+                    </h1>
+                    <div style={{ width: '40px', height: '1px', background: 'var(--color-gold)', marginBottom: '28px' }} />
+                    <p style={{ fontSize: '1.6rem', marginBottom: '28px', color: 'var(--color-gold)', fontFamily: 'var(--font-serif)', fontWeight: 300, letterSpacing: '2px' }}>
+                        ₱{product.price}
                     </p>
-                    <h1 style={{ fontSize: '3rem', marginBottom: '20px' }}>{product.name}</h1>
-                    <p style={{ fontSize: '1.5rem', marginBottom: '30px' }}>₱{product.price}</p>
 
-                    <div style={{ marginBottom: '20px' }}>
-                        <span className="badge" style={{ backgroundColor: product.stock > 0 ? '#e6f4ea' : '#fce8e6', color: product.stock > 0 ? '#1e7e34' : '#d93025', padding: '6px 12px', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 600 }}>
-                            {product.stock > 0 ? 'Available' : 'Sold Out'}
+                    <div style={{ marginBottom: '32px' }}>
+                        <span style={{
+                            display: 'inline-block',
+                            padding: '6px 14px',
+                            fontSize: '0.62rem',
+                            letterSpacing: '2px',
+                            textTransform: 'uppercase',
+                            fontWeight: 600,
+                            border: `1px solid ${inStock ? 'rgba(201,169,110,0.4)' : 'rgba(255,255,255,0.15)'}`,
+                            color: inStock ? 'var(--color-gold)' : 'var(--color-gray)',
+                            background: inStock ? 'rgba(201,169,110,0.06)' : 'transparent',
+                        }}>
+                            {inStock ? 'Available' : 'Sold Out'}
                         </span>
-                        {product.stock > 0 && (
-                            <span style={{ marginLeft: '10px', fontSize: '0.9rem', color: 'var(--color-gray)' }}>
-                                {product.stock} pieces left in stock
+                        {inStock && (
+                            <span style={{ marginLeft: '14px', fontSize: '0.8rem', color: 'var(--color-gray)', letterSpacing: '1px' }}>
+                                {product.stock} left in stock
                             </span>
                         )}
                     </div>
 
-                    <div style={{ marginTop: '20px' }}>
-                        {product.stock > 0 ? (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                                <Link to={`/checkout/${product.id}`} className="btn btn-primary" style={{ width: '100%', padding: '18px 0', fontSize: '1rem' }}>
-                                    Buy Now (Proof of Payment)
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        {inStock ? (
+                            <>
+                                <Link to={`/checkout/${product.id}`} className="btn btn-primary" style={{ width: '100%', padding: '18px 0' }}>
+                                    Buy Now
                                 </Link>
-                                <Link to="/contact" className="btn btn-secondary" style={{ width: '100%', padding: '18px 0', fontSize: '1rem' }}>
+                                <Link to="/contact" className="btn btn-secondary" style={{ width: '100%', padding: '18px 0' }}>
                                     Inquire via Email
                                 </Link>
-                            </div>
+                            </>
                         ) : (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                                <button className="btn btn-secondary" disabled style={{ width: '100%', padding: '18px 0', fontSize: '1rem', cursor: 'not-allowed', opacity: 0.7 }}>
+                            <>
+                                <button className="btn btn-secondary" disabled style={{ width: '100%', padding: '18px 0', cursor: 'not-allowed', opacity: 0.4 }}>
                                     Sold Out
                                 </button>
-                                <Link to="/contact" className="btn btn-outline-gold" style={{ width: '100%', padding: '18px 0', fontSize: '1rem' }}>
+                                <Link to="/contact" className="btn btn-outline-gold" style={{ width: '100%', padding: '18px 0' }}>
                                     Join the Waitlist
                                 </Link>
-                            </div>
-                        )}
-                        {product.stock <= 0 && (
-                            <p style={{ textAlign: 'center', marginTop: '15px', fontSize: '0.85rem', color: 'var(--color-gray)' }}>
-                                Be notified when this scent is back in stock
-                            </p>
+                                <p style={{ textAlign: 'center', fontSize: '0.72rem', color: 'var(--color-gray)', letterSpacing: '1px', marginTop: '4px' }}>
+                                    Be notified when this scent returns
+                                </p>
+                            </>
                         )}
                     </div>
                 </div>

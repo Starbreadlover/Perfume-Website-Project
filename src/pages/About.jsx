@@ -9,7 +9,7 @@ const About = () => {
                 alignItems: 'center',
                 justifyContent: 'center',
                 textAlign: 'center',
-                color: 'var(--color-white)',
+                color: '#f0ebe4',
                 backgroundImage: 'url(https://images.unsplash.com/photo-1596462502278-27bfdc403348?q=80&w=2000&auto=format&fit=crop)',
                 backgroundSize: 'cover',
                 backgroundPosition: 'center'

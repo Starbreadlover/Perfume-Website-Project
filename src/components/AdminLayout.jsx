@@ -21,7 +21,7 @@ const AdminLayout = () => {
             {/* Sidebar */}
             <div className="admin-sidebar">
                 <div style={{ marginBottom: '40px', padding: '0 10px' }}>
-                    <h2 style={{ fontFamily: 'var(--font-serif)', color: 'var(--color-white)', textTransform: 'uppercase', letterSpacing: '2px', fontSize: '1.2rem' }}>L & S Admin</h2>
+                    <h2 style={{ fontFamily: 'var(--font-serif)', color: '#f0ebe4', textTransform: 'uppercase', letterSpacing: '4px', fontSize: '1rem', fontWeight: 400 }}>L & S Admin</h2>
                     <p style={{ color: 'var(--color-gray)', fontSize: '0.8rem' }}>Management Portal</p>
                 </div>
 

@@ -7,24 +7,21 @@ const ProductCard = ({ product }) => {
                 {product.stockStatus === 'Sold Out' && <span className="badge badge-sold-out">Sold Out</span>}
                 {product.stockStatus === 'Sold' && <span className="badge badge-sold">Sold</span>}
                 <img src={product.image} alt={product.name} className="card-img" loading="lazy" />
-
             </div>
             <div className="card-content">
                 <div>
-                    <h3 className="card-title" style={{ fontSize: '1.1rem', marginBottom: '8px' }}>{product.name}</h3>
-                    <p className="card-price" style={{ color: 'var(--color-black)' }}>
-                        ₱{product.price}
-                    </p>
+                    <h3 className="card-title">{product.name}</h3>
+                    <p className="card-price">₱{product.price}</p>
                 </div>
-                <div style={{ marginTop: '12px' }}>
-                    <span style={{ 
-                        fontSize: '0.75rem', 
-                        textTransform: 'uppercase', 
-                        letterSpacing: '1px', 
-                        fontWeight: 600,
-                        color: 'var(--color-gold)'
+                <div>
+                    <span style={{
+                        fontSize: '0.62rem',
+                        textTransform: 'uppercase',
+                        letterSpacing: '2px',
+                        fontWeight: 500,
+                        color: product.stock > 0 ? 'var(--color-gold)' : 'var(--color-gray)',
                     }}>
-                        {product.stock > 0 ? `On Stock: ${product.stock} Left` : 'Sold Out'}
+                        {product.stock > 0 ? `${product.stock} In Stock` : 'Sold Out'}
                     </span>
                 </div>
             </div>
